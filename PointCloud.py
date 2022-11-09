@@ -56,6 +56,10 @@ class PointCloud(object):
     for pnt in self.p:
       pnt.heat = temp
 
+  def cool(self, f=0.1):
+    for pnt in self.p:
+      pnt.heat = pnt.heat * (1.0-f)
+
   def addGrid(self, w, h, offset=0.5):
     pt = [Point2(float(x) / (w-1) + ((offset/(w-1)) if y % 2 else 0), float(y)/(h-1)) for y in range(int(h)) for x in range(int(w if (y%2==0) else (w-1)))]
     self.p += [Point2(p.x*(self.width-1), p.y*(self.height-1)) for p in pt]

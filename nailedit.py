@@ -66,6 +66,8 @@ class Viewer(QtWidgets.QMainWindow):
     self.iterationCounter = 0
     self.currentWidth = 1
     self.threadCol = [self.parameters["threadColor"][0]/255.0, self.parameters["threadColor"][1]/255.0]
+    self.save_image = False
+    self.outPath = "/Users/zengqiang/codespace/nails-threading/img_{:04d}.jpg"
 
     self.targetImage = self.parameters["TargetImage"]
     self.np_targetArray = PIL_to_array(self.targetImage)
@@ -374,8 +376,20 @@ class Viewer(QtWidgets.QMainWindow):
       self.imageLabel2.setPixmap(QtGui.QPixmap.fromImage(self.qim2))
       self.imageLabel2.adjustSize()
 
+  def find_next_island(self, currentImg, pnts, current_idx, search_radius):
+    cur_diff = sel_blur(currentImg, self.np_targetArray) - self.np_targetArray
+    pnt_quality = []
+    for idx, p in enumerate(pnts.p):
+      if not idx == current_idx:
+        quality = getColor(cur_diff, p.x, p.y)
+        if quality < 0:
+          if pnts.p[idx].neighbors is None or len(pnts.p[idx].neighbors) > 0:
+            pnt_quality.append((quality / pnts.p[current_idx].dist(p), idx))
 
-def draw_points(pil_image, pnts, size=1,highlighted=None):
+    pnt_quality.sort()
+    return pnt_quality[0][1]
+
+def draw_points(pil_image, pnts, size=1, highlighed=None):
   w = int(size-1)/2
   draw = ImageDraw.Draw(pil_image, mode="RGBA")
   if w < 1:
@@ -394,6 +408,20 @@ def draw_points(pil_image, pnts, size=1,highlighted=None):
         col = (255, int(255*(1.0-p.heat)), 0, 255)
       
       draw.rectangle([p.x-w, p.y-w, p.x+w, p.y+w], fill=(col[0], col[1], col[2], 120), outline=col)
+
+  if not highlighed is None:
+    col = (255, 255, 0, 128)
+    w = 2
+    for id in highlighed:
+      p = pnts.p[id]
+      draw.rectangle([p.x-w, p.y-w, p.x+w, p.y+w], outline=col)
+  
+  return pil_image
+
+def getColor(img, x, y):
+    #x = max(0, min(img.shape[1]-1, x))
+    #y = max(0, min(img.shape[0]-1, y))
+    return img[int(y)][int(x)]
 
 def PIL_to_array(pil_image):
   if pil_image.mode == "RGB":
@@ -624,6 +652,7 @@ if __name__ == '__main__':
 
   mpp = 0.3/600 # meters per pixel
   params = {
+    "ppi": mpp,   
     "searchRadius": 0.25,
     "proc_height": 600,
     "inputImagePath": "einstein3.png",
@@ -642,6 +671,7 @@ if __name__ == '__main__':
     "lastPoint": -1,
     "threadColor":(255, 160),
     "maxSegmentConnect": 1, 
+    "maxIterations":10000,
   }
 
   # 加载图片
